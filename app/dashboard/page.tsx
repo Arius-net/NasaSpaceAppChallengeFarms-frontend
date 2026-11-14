@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import AIRecommendationPanel from "@/components/AIRecommendationPanel";
 
 const PARCEL_HISTORY = [
   { id: "FRA-01", nombre: "El Sabinal (Villaflores)", ciclo: "PV 2025", ha: "4.5 ha", estado: "Óptimo" },
@@ -15,7 +16,7 @@ const CLIMATE_CARDS = [
   { fuente: "NASA IMERG", metrica: "Precipitación Acum.", valor: "42.6 mm", detalle: "Últimos 10 días" },
 ];
 
-// Renderiza el layout principal del dashboard con sidebar de historial y contenedor central.
+// Renderiza el layout principal del dashboard integrando el sidebar y el panel de IA.
 export default function DashboardPage() {
   const [selectedParcel, setSelectedParcel] = useState(PARCEL_HISTORY[0]);
 
@@ -91,7 +92,7 @@ export default function DashboardPage() {
         </aside>
 
         <section className="lg:col-span-9 p-6 flex flex-col gap-6">
-          <div className="flex-1 min-h-[420px] rounded-2xl border border-slate-800 bg-slate-900/60 p-6 flex flex-col justify-between">
+          <div className="flex-1 min-h-[380px] rounded-2xl border border-slate-800 bg-slate-900/60 p-6 flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-lg font-bold text-white">
@@ -106,7 +107,7 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            <div className="my-auto text-center py-16 border border-dashed border-slate-800 rounded-xl">
+            <div className="my-auto text-center py-14 border border-dashed border-slate-800 rounded-xl">
               <p className="text-sm font-medium text-slate-300">
                 Contenedor central preparado para el visor geoespacial Mapbox / Deck.gl
               </p>
@@ -115,6 +116,12 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
+
+          <AIRecommendationPanel
+            parcelId={selectedParcel.id}
+            parcelName={selectedParcel.nombre}
+            droughtAlertLevel={selectedParcel.id === "FRA-02" ? "Alta" : "Moderada"}
+          />
         </section>
       </div>
     </div>
