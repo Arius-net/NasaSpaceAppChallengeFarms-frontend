@@ -23,15 +23,15 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="flex-1 flex items-center justify-center px-4 py-12 bg-slate-950">
-      <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/80 p-8 shadow-xl">
+    <main className="flex-1 flex items-center justify-center bg-[#f7f8f3] px-4 py-12">
+      <div className="w-full max-w-md rounded-xl border border-[#dce4dc] bg-white p-8 shadow-sm">
         <div className="mb-6 text-center">
-          <span className="inline-block rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-            K&apos;INAL · NUEVO PRODUCTOR
+          <span className="inline-block rounded-full bg-[#e8f1df] px-3 py-1 text-xs font-bold text-[#176b4d]">
+            K&apos;INAL · REGISTRO
           </span>
-          <h1 className="mt-3 text-2xl font-bold text-white">Crear Cuenta</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Registra tus parcelas de maíz de temporal en La Frailesca, Chiapas
+          <h1 className="mt-3 text-2xl font-extrabold">Crear cuenta</h1>
+          <p className="mt-1 text-sm text-[#647269]">
+            Comienza a monitorear tus parcelas
           </p>
         </div>
 
@@ -39,7 +39,7 @@ export default function RegisterPage() {
           <div>
             <label
               htmlFor="name"
-              className="block text-xs font-semibold uppercase tracking-wider text-slate-300"
+              className="block text-xs font-bold uppercase tracking-wider text-[#647269]"
             >
               Nombre completo
             </label>
@@ -50,14 +50,14 @@ export default function RegisterPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej. Mateo Grajales"
-              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+              className="mt-1.5 w-full rounded-lg border border-[#cbd9ce] bg-white px-3.5 py-2.5 text-sm text-[#17231c] placeholder-[#9aaba0] focus:border-[#176b4d] focus:outline-none"
             />
           </div>
 
           <div>
             <label
               htmlFor="email"
-              className="block text-xs font-semibold uppercase tracking-wider text-slate-300"
+              className="block text-xs font-bold uppercase tracking-wider text-[#647269]"
             >
               Correo electrónico
             </label>
@@ -68,14 +68,14 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="mateo@frailesca.mx"
-              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+              className="mt-1.5 w-full rounded-lg border border-[#cbd9ce] bg-white px-3.5 py-2.5 text-sm text-[#17231c] placeholder-[#9aaba0] focus:border-[#176b4d] focus:outline-none"
             />
           </div>
 
           <div>
             <label
               htmlFor="password"
-              className="block text-xs font-semibold uppercase tracking-wider text-slate-300"
+              className="block text-xs font-bold uppercase tracking-wider text-[#647269]"
             >
               Contraseña
             </label>
@@ -87,26 +87,26 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Mínimo 6 caracteres"
-              className="mt-1.5 w-full rounded-lg border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+              className="mt-1.5 w-full rounded-lg border border-[#cbd9ce] bg-white px-3.5 py-2.5 text-sm text-[#17231c] placeholder-[#9aaba0] focus:border-[#176b4d] focus:outline-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-50"
+            className="w-full rounded-lg bg-[#176b4d] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0e4935] disabled:opacity-50"
           >
-            {loading ? "Registrando cuenta..." : "Crear cuenta en K'INAL"}
+            {loading ? "Creando..." : "Crear cuenta"}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-400">
-          ¿Ya tienes una cuenta?{" "}
+        <p className="mt-6 text-center text-sm text-[#647269]">
+          ¿Ya tienes cuenta?{" "}
           <Link
             href="/login"
-            className="font-semibold text-emerald-400 hover:text-emerald-300"
+            className="font-bold text-[#176b4d] hover:text-[#0e4935]"
           >
-            Inicia sesión
+            Entrar
           </Link>
         </p>
       </div>
