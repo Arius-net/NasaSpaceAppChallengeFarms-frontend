@@ -8,93 +8,32 @@ export interface MapboxViewerProps {
   coordinates?: { lat: number; lng: number };
 }
 
-// Renderiza el visor geoespacial interactivo centrado en La Frailesca con selector de capas NASA.
 export default function MapboxViewer({
   parcelId = "FRA-01",
-  parcelName = "El Sabinal (Villaflores)",
+  parcelName = "El Sabinal",
   coordinates = { lat: 16.2334, lng: -93.2682 },
 }: MapboxViewerProps) {
   const [activeLayer, setActiveLayer] = useState<"SMAP" | "IMERG" | "POWER">("SMAP");
   const [zoom, setZoom] = useState(13);
+  const layerText = { SMAP: "Humedad radicular: 0.28 m³/m³", IMERG: "Lluvia 10 días: 42.6 mm", POWER: "Temperatura: 29.4 °C" };
 
   return (
-    <div className="relative flex-1 min-h-[380px] overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 flex flex-col justify-between">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-25"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.28), transparent 65%), linear-gradient(to right, #1e293b 1px, transparent 1px), linear-gradient(to bottom, #1e293b 1px, transparent 1px)",
-          backgroundSize: "100% 100%, 36px 36px, 36px 36px",
-        }}
-      />
-
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/90 px-3.5 py-2 backdrop-blur">
-          <p className="text-xs font-bold text-white">
-            Visor Mapbox GL · {parcelName} ({parcelId})
-          </p>
-          <p className="font-mono text-[11px] text-slate-400">
-            Lat: {coordinates.lat.toFixed(4)}° N · Lng: {coordinates.lng.toFixed(4)}° W · Zoom: {zoom}x
-          </p>
-        </div>
-
-        <div className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/90 p-1 backdrop-blur">
-          {(["SMAP", "IMERG", "POWER"] as const).map((layer) => (
-            <button
-              key={layer}
-              type="button"
-              onClick={() => setActiveLayer(layer)}
-              className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
-                activeLayer === layer
-                  ? "bg-emerald-600 text-white"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              NASA {layer}
-            </button>
-          ))}
+    <section className="min-h-[390px] rounded-xl border border-[#dce4dc] bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div><p className="text-xs font-bold uppercase tracking-wider text-[#647269]">Mapa de parcela</p><h2 className="mt-1 text-xl font-extrabold">{parcelName} <span className="font-normal text-[#647269]">/{parcelId}</span></h2></div>
+        <div className="flex rounded-lg border border-[#dce4dc] bg-[#f7f8f3] p-1">
+          {(["SMAP", "IMERG", "POWER"] as const).map((layer) => <button key={layer} type="button" onClick={() => setActiveLayer(layer)} className={`rounded-md px-3 py-1.5 text-xs font-bold ${activeLayer === layer ? "bg-[#176b4d] text-white" : "text-[#647269] hover:text-[#176b4d]"}`}>{layer}</button>)}
         </div>
       </div>
-
-      <div className="relative z-10 my-auto flex flex-col items-center justify-center py-8">
-        <div className="relative flex h-44 w-64 items-center justify-center rounded-2xl border-2 border-emerald-500/70 bg-emerald-500/10 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
-          <div className="text-center">
-            <span className="rounded-md bg-emerald-500/20 px-2 py-0.5 font-mono text-[11px] text-emerald-300">
-              Polígono {parcelId}
-            </span>
-            <p className="mt-2 text-xs font-semibold text-white">
-              Capa activa: NASA {activeLayer}
-            </p>
-            <p className="mt-0.5 text-[11px] text-slate-300">
-              {activeLayer === "SMAP" && "Humedad radicular: 0.28 m³/m³"}
-              {activeLayer === "IMERG" && "Precipitación 10d: 42.6 mm"}
-              {activeLayer === "POWER" && "Radiación / Temp: 29.4 °C"}
-            </p>
-          </div>
-        </div>
+      <div className="relative my-5 flex h-52 items-center justify-center overflow-hidden rounded-lg bg-[#dcead4]">
+        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: "linear-gradient(#b8d2b7 1px, transparent 1px), linear-gradient(90deg, #b8d2b7 1px, transparent 1px)", backgroundSize: "30px 30px" }} />
+        <div className="relative h-32 w-64 rotate-[-3deg] border-2 border-[#176b4d] bg-[#b9db91] p-3 text-center shadow-[10px_10px_0_#9cc878]"><p className="mt-10 text-sm font-bold text-[#0e4935]">{parcelId}</p><p className="text-xs text-[#176b4d]">{layerText[activeLayer]}</p></div>
+        <span className="absolute left-4 top-4 rounded-md bg-white px-2 py-1 text-[11px] font-bold text-[#176b4d]">Capa: {activeLayer}</span>
       </div>
-
-      <div className="relative z-10 flex items-center justify-between text-xs text-slate-400">
-        <span className="font-mono text-[11px]">
-          NEXT_PUBLIC_MAPBOX_TOKEN · Región La Frailesca, Chiapas
-        </span>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setZoom((z) => Math.max(8, z - 1))}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-white hover:bg-slate-800"
-          >
-            -
-          </button>
-          <button
-            type="button"
-            onClick={() => setZoom((z) => Math.min(18, z + 1))}
-            className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-white hover:bg-slate-800"
-          >
-            +
-          </button>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#647269]">
+        <span>Lat {coordinates.lat.toFixed(4)} · Lng {coordinates.lng.toFixed(4)} · Zoom {zoom}x</span>
+        <div className="flex gap-2"><button type="button" aria-label="Alejar mapa" onClick={() => setZoom((value) => Math.max(8, value - 1))} className="h-7 w-7 rounded-md border border-[#b8c8bc] font-bold hover:bg-[#e8f1df]">−</button><button type="button" aria-label="Acercar mapa" onClick={() => setZoom((value) => Math.min(18, value + 1))} className="h-7 w-7 rounded-md border border-[#b8c8bc] font-bold hover:bg-[#e8f1df]">+</button></div>
       </div>
-    </div>
+    </section>
   );
 }
