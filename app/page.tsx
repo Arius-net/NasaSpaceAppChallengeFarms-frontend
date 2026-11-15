@@ -17,8 +17,7 @@ export default function HomePage() {
           </Link>
           <div className="flex items-center gap-5 text-sm font-semibold">
             <Link href="/dashboard" className="hidden text-[#647269] hover:text-[#176b4d] sm:inline">Dashboard</Link>
-            <Link href="/login" className="text-[#176b4d] hover:text-[#0e4935]">Entrar</Link>
-            <Link href="/register" className="rounded-lg bg-[#176b4d] px-4 py-2.5 text-white hover:bg-[#0e4935]">Crear cuenta</Link>
+            <Link href="/dashboard" className="rounded-lg bg-[#176b4d] px-4 py-2.5 text-white hover:bg-[#0e4935]">Probar Demo Interactiva</Link>
           </div>
         </nav>
       </header>
@@ -34,8 +33,8 @@ export default function HomePage() {
               K&apos;INAL convierte datos satelitales en recomendaciones claras para tus parcelas de maíz en La Frailesca.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/dashboard" className="rounded-lg bg-[#176b4d] px-5 py-3 text-sm font-bold text-white hover:bg-[#0e4935]">Ver dashboard</Link>
-              <Link href="/register" className="rounded-lg border border-[#b8c8bc] bg-white px-5 py-3 text-sm font-bold text-[#176b4d] hover:border-[#176b4d]">Registrar parcela</Link>
+              <Link href="/dashboard" className="rounded-lg bg-[#176b4d] px-5 py-3 text-sm font-bold text-white hover:bg-[#0e4935]">Probar Demo Interactiva</Link>
+              <Link href="/dashboard" className="rounded-lg border border-[#b8c8bc] bg-white px-5 py-3 text-sm font-bold text-[#176b4d] hover:border-[#176b4d]">Ver visor satelital</Link>
             </div>
             <div className="mt-12 flex items-center gap-8 border-t border-[#dce4dc] pt-6">
               <div><p className="text-2xl font-extrabold text-[#17231c]">3</p><p className="text-xs text-[#647269]">fuentes NASA</p></div>

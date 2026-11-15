@@ -67,6 +67,8 @@ export class ApiError extends Error {
   }
 }
 
+export const DEFAULT_DEMO_FARM_ID = "00000000-0000-4000-8000-000000000001";
+
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -165,14 +167,15 @@ export async function fetchWeather(coordinates: Coordinates, signal?: AbortSigna
 export async function fetchRecommendation(
   lat: number,
   lon: number,
-  farm_id?: string,
+  farm_id: string = DEFAULT_DEMO_FARM_ID,
   signal?: AbortSignal
 ): Promise<AgronomicRecommendationResponse> {
   validateCoordinates({ lat, lon });
-  const bodyPayload: Record<string, unknown> = { lat, lon };
-  if (farm_id) {
-    bodyPayload.farm_id = farm_id;
-  }
+  const bodyPayload: Record<string, unknown> = {
+    lat,
+    lon,
+    farm_id: farm_id || DEFAULT_DEMO_FARM_ID,
+  };
 
   let response = await fetch(`${API_BASE_URL}/api/recommendation`, {
     method: "POST",
@@ -185,15 +188,17 @@ export async function fetchRecommendation(
     cache: "no-store",
   });
 
-  if (response.status === 405) {
+  if (!response.ok) {
     const query = new URLSearchParams({ lat: String(lat), lon: String(lon) });
-    if (farm_id) query.set("farm_id", farm_id);
-    response = await fetch(`${API_BASE_URL}/api/recommendation?${query.toString()}`, {
+    const fallbackResponse = await fetch(`${API_BASE_URL}/api/recommendation?${query.toString()}`, {
       method: "GET",
       headers: { Accept: "application/json" },
       signal,
       cache: "no-store",
     });
+    if (fallbackResponse.ok) {
+      response = fallbackResponse;
+    }
   }
 
   if (!response.ok) {

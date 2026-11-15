@@ -9,14 +9,15 @@ import {
   ClimateTelemetry,
   AgronomicRecommendationResponse,
   ForecastResponse,
+  DEFAULT_DEMO_FARM_ID,
   fetchForecast,
   fetchRecommendation,
 } from "@/services/api";
 
 const PARCEL_HISTORY = [
-  { id: "FRA-01", nombre: "El Sabinal", ubicacion: "Villaflores", ciclo: "PV 2025", ha: "4.5 ha", estado: "Óptimo", coords: { lat: 16.2334, lon: -93.2682 } },
-  { id: "FRA-02", nombre: "San Pedro", ubicacion: "Villa Corzo", ciclo: "PV 2025", ha: "6.0 ha", estado: "Vigilancia", coords: { lat: 16.1852, lon: -93.2689 } },
-  { id: "FRA-03", nombre: "La Concordia Norte", ubicacion: "La Concordia", ciclo: "PV 2024", ha: "3.2 ha", estado: "Histórico", coords: { lat: 16.1165, lon: -92.6885 } },
+  { id: "FRA-01", farmId: "00000000-0000-4000-8000-000000000001", nombre: "El Sabinal", ubicacion: "Villaflores", ciclo: "PV 2025", ha: "4.5 ha", estado: "Óptimo", coords: { lat: 16.2334, lon: -93.2682 } },
+  { id: "FRA-02", farmId: "00000000-0000-4000-8000-000000000002", nombre: "San Pedro", ubicacion: "Villa Corzo", ciclo: "PV 2025", ha: "6.0 ha", estado: "Vigilancia", coords: { lat: 16.1852, lon: -93.2689 } },
+  { id: "FRA-03", farmId: "00000000-0000-4000-8000-000000000003", nombre: "La Concordia Norte", ubicacion: "La Concordia", ciclo: "PV 2024", ha: "3.2 ha", estado: "Histórico", coords: { lat: 16.1165, lon: -92.6885 } },
 ];
 
 const CLIMATE_CARDS = [
@@ -47,7 +48,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string>();
 
   const loadData = useCallback(
-    async (targetLat: number, targetLon: number, farmId?: string, signal?: AbortSignal) => {
+    async (targetLat: number, targetLon: number, farmId: string = DEFAULT_DEMO_FARM_ID, signal?: AbortSignal) => {
       if (signal?.aborted) return;
       setLoading(true);
       setError(undefined);
@@ -83,10 +84,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const farmId = customPoint ? undefined : selectedParcel.id;
+    const farmId = selectedParcel.farmId || DEFAULT_DEMO_FARM_ID;
     queueMicrotask(() => void loadData(coords.lat, coords.lon, farmId, controller.signal));
     return () => controller.abort();
-  }, [coords.lat, coords.lon, customPoint, selectedParcel.id, loadData]);
+  }, [coords.lat, coords.lon, selectedParcel.farmId, loadData]);
 
   const handleSelectParcel = (parcel: (typeof PARCEL_HISTORY)[number]) => {
     setSelectedParcel(parcel);
@@ -152,9 +153,9 @@ export default function DashboardPage() {
             <span className="font-extrabold">K&apos;INAL</span>
           </Link>
           <div className="flex items-center gap-4 text-sm">
-            <span className="hidden text-[#647269] md:inline">Panel agrícola</span>
+            <span className="hidden text-[#647269] md:inline">Modo Demo Interactiva</span>
             <Link href="/" className="font-bold text-[#176b4d]">
-              Salir
+              Inicio
             </Link>
           </div>
         </div>
@@ -173,7 +174,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() =>
-              void loadData(coords.lat, coords.lon, customPoint ? undefined : selectedParcel.id)
+              void loadData(coords.lat, coords.lon, selectedParcel.farmId || DEFAULT_DEMO_FARM_ID)
             }
             disabled={loading}
             className="rounded-lg bg-[#176b4d] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0e4935] disabled:cursor-wait disabled:opacity-60"
@@ -191,7 +192,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() =>
-                void loadData(coords.lat, coords.lon, customPoint ? undefined : selectedParcel.id)
+                void loadData(coords.lat, coords.lon, selectedParcel.farmId || DEFAULT_DEMO_FARM_ID)
               }
               className="font-bold underline"
             >
