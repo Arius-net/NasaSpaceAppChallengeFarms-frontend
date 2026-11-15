@@ -106,16 +106,32 @@ export default function DashboardPage() {
 
   const gwetCurrent = forecast?.gwetrootCurrent ?? weather?.smapSoilMoisture;
   const gwetP50 = forecast?.gwetrootP50;
-  const gwetDelta =
-    gwetP50 !== undefined && gwetCurrent !== undefined
-      ? Number((gwetP50 - gwetCurrent).toFixed(3))
+  const gwetPct =
+    gwetP50 !== undefined
+      ? Math.min(100, Math.max(0, Math.round(gwetP50 * 100)))
+      : gwetCurrent !== undefined
+      ? Math.min(100, Math.max(0, Math.round(gwetCurrent * 100)))
       : undefined;
+
+  const currentPct =
+    gwetCurrent !== undefined
+      ? Math.min(100, Math.max(0, Math.round(gwetCurrent * 100)))
+      : undefined;
+
+  const soilStatusLabel =
+    gwetPct === undefined
+      ? "Sin datos"
+      : gwetPct >= 37
+      ? "Humedad Óptima"
+      : gwetPct >= 35
+      ? "Reserva en Vigilancia"
+      : "Riesgo de Estrés Hídrico";
 
   const gddActual = viabilityMetrics?.gddAnualBase10C;
   const gddRequired = 1530;
   const gddPct =
     gddActual !== undefined
-      ? Math.min(100, Math.round((gddActual / gddRequired) * 100))
+      ? Math.min(100, Math.max(5, Math.round((gddActual / gddRequired) * 100)))
       : undefined;
 
   const displayParcelName = customPoint
@@ -143,6 +159,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
+
       <main className="mx-auto max-w-[1440px] px-6 py-8">
         <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
@@ -164,6 +181,7 @@ export default function DashboardPage() {
             {loading ? "Cargando..." : "Actualizar datos"}
           </button>
         </div>
+
         {error && (
           <div
             role="alert"
@@ -181,8 +199,9 @@ export default function DashboardPage() {
             </button>
           </div>
         )}
+
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-          <aside className="rounded-xl border border-[#dce4dc] bg-white p-4 shadow-sm">
+          <aside className="rounded-xl border border-[#dce4dc] bg-white p-4 shadow-sm h-fit">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-extrabold">Mis parcelas</h2>
               <span className="rounded-full bg-[#e8f1df] px-2 py-1 text-xs font-bold text-[#176b4d]">
@@ -217,6 +236,7 @@ export default function DashboardPage() {
               })}
             </div>
           </aside>
+
           <section className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-3">
               {CLIMATE_CARDS.map(([label, key, source]) => (
@@ -236,217 +256,6 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <div className="rounded-xl border border-[#dce4dc] bg-white p-5 shadow-sm">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-[#dce4dc] pb-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-[#176b4d]">
-                    Pulso Agroclimático y Pronóstico
-                  </p>
-                  <h2 className="mt-0.5 text-base font-extrabold text-[#17231c]">
-                    Indicadores Predictivos y Balance Térmico-Pluvial
-                  </h2>
-                </div>
-                <span className="rounded-md border border-[#cbd9ce] bg-[#f7f8f3] px-2.5 py-1 font-mono text-[11px] font-semibold text-[#176b4d]">
-                  Horizonte t+7 días · Escala nativa 0–1
-                </span>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-xl border border-[#dce4dc] bg-[#f7f8f3] p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center justify-between gap-1.5">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#647269]">
-                        Humedad a 7 días (GWETROOT)
-                      </span>
-                      <span className="rounded bg-[#176b4d] px-2 py-0.5 font-mono text-[10px] font-bold text-white">
-                        [XGBoost ML Forecast]
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex items-baseline gap-3">
-                      <div>
-                        <span className="block text-[10px] font-semibold uppercase text-[#647269]">
-                          Pronóstico p50
-                        </span>
-                        <span className="font-mono text-2xl font-extrabold text-[#176b4d]">
-                          {loading
-                            ? "..."
-                            : gwetP50 !== undefined
-                            ? gwetP50.toFixed(3)
-                            : "Sin datos"}
-                        </span>
-                      </div>
-                      <span className="font-mono text-xs text-[#647269]">vs</span>
-                      <div>
-                        <span className="block text-[10px] font-semibold uppercase text-[#647269]">
-                          Actual
-                        </span>
-                        <span className="font-mono text-lg font-bold text-[#17231c]">
-                          {loading
-                            ? "..."
-                            : gwetCurrent !== undefined
-                            ? gwetCurrent.toFixed(3)
-                            : "Sin datos"}
-                        </span>
-                      </div>
-                      {!loading && gwetDelta !== undefined && (
-                        <span
-                          className={`ml-auto rounded px-2 py-0.5 font-mono text-xs font-bold ${
-                            gwetDelta >= 0
-                              ? "bg-[#d7edb4] text-[#176b4d]"
-                              : "bg-[#fff0cf] text-[#8a5a08]"
-                          }`}
-                        >
-                          {gwetDelta >= 0 ? `+${gwetDelta}` : gwetDelta}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-3 border-t border-[#dce4dc] pt-2.5 flex items-center justify-between font-mono text-[11px] text-[#647269]">
-                    <span>
-                      Banda p10–p90:{" "}
-                      {forecast?.gwetrootP10 !== undefined && forecast?.gwetrootP90 !== undefined
-                        ? `${forecast.gwetrootP10.toFixed(2)} – ${forecast.gwetrootP90.toFixed(2)}`
-                        : "N/D"}
-                    </span>
-                    <span className="font-bold text-[#176b4d]">
-                      {forecast?.forecastClass || "Estable"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-[#dce4dc] bg-[#f7f8f3] p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#647269]">
-                        Lluvia Acumulada Multi-Ventana
-                      </span>
-                      <span className="rounded border border-[#cbd9ce] bg-white px-2 py-0.5 font-mono text-[10px] font-bold text-[#176b4d]">
-                        [PRECTOTCORR]
-                      </span>
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-lg border border-[#dce4dc] bg-white p-2">
-                        <span className="block text-[10px] font-bold uppercase text-[#647269]">
-                          3 Días
-                        </span>
-                        <span className="mt-0.5 block font-mono text-base font-extrabold text-[#17231c]">
-                          {loading
-                            ? "..."
-                            : weather?.precip3dMm !== undefined
-                            ? `${weather.precip3dMm} mm`
-                            : "N/D"}
-                        </span>
-                      </div>
-                      <div className="rounded-lg border border-[#176b4d]/40 bg-white p-2">
-                        <span className="block text-[10px] font-bold uppercase text-[#176b4d]">
-                          7 Días
-                        </span>
-                        <span className="mt-0.5 block font-mono text-base font-extrabold text-[#176b4d]">
-                          {loading
-                            ? "..."
-                            : weather?.precip7dMm !== undefined
-                            ? `${weather.precip7dMm} mm`
-                            : "N/D"}
-                        </span>
-                      </div>
-                      <div className="rounded-lg border border-[#dce4dc] bg-white p-2">
-                        <span className="block text-[10px] font-bold uppercase text-[#647269]">
-                          14 Días
-                        </span>
-                        <span className="mt-0.5 block font-mono text-base font-extrabold text-[#17231c]">
-                          {loading
-                            ? "..."
-                            : weather?.precip14dMm !== undefined
-                            ? `${weather.precip14dMm} mm`
-                            : "N/D"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 border-t border-[#dce4dc] pt-2.5 flex items-center justify-between font-mono text-[11px] text-[#647269]">
-                    <span>Días con lluvia (&ge;1 mm):</span>
-                    <span className="font-bold text-[#17231c]">
-                      {loading
-                        ? "..."
-                        : weather?.rainyDays !== undefined
-                        ? `${weather.rainyDays} de 14 días`
-                        : "Sin datos"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-[#dce4dc] bg-[#f7f8f3] p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#647269]">
-                        Potencial Térmico (GDD)
-                      </span>
-                      <span className="rounded border border-[#cbd9ce] bg-white px-2 py-0.5 font-mono text-[10px] font-bold text-[#8a5a08]">
-                        [Base 10 °C]
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex items-baseline justify-between">
-                      <div>
-                        <span className="block text-[10px] font-semibold uppercase text-[#647269]">
-                          GDD Anual Estimado
-                        </span>
-                        <span className="font-mono text-2xl font-extrabold text-[#17231c]">
-                          {loading
-                            ? "..."
-                            : gddActual !== undefined
-                            ? `${Math.round(gddActual)} °C·d`
-                            : "Sin datos"}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="block text-[10px] font-semibold uppercase text-[#647269]">
-                          Requerido Ciclo
-                        </span>
-                        <span className="font-mono text-sm font-bold text-[#176b4d]">
-                          {gddRequired} °C·d
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-[#dce4dc]">
-                      <div
-                        className={`h-full transition-all ${
-                          gddActual !== undefined && gddActual >= gddRequired
-                            ? "bg-[#176b4d]"
-                            : "bg-[#d97706]"
-                        }`}
-                        style={{ width: `${gddPct ?? 0}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-3 border-t border-[#dce4dc] pt-2.5 flex items-center justify-between font-mono text-[11px] text-[#647269]">
-                    <span>Viabilidad térmica:</span>
-                    <span
-                      className={`font-bold ${
-                        gddActual !== undefined && gddActual >= gddRequired
-                          ? "text-[#176b4d]"
-                          : "text-[#8a5a08]"
-                      }`}
-                    >
-                      {loading
-                        ? "..."
-                        : gddActual !== undefined
-                        ? gddActual >= gddRequired
-                          ? "Cumple requerimiento"
-                          : "Por debajo del óptimo"
-                        : viabilityMetrics?.verdict || "Sin datos"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <MapboxViewer
               parcelId={displayParcelId}
               parcelName={displayParcelName}
@@ -455,6 +264,7 @@ export default function DashboardPage() {
               semaforoColor={recommendation?.semaforoColor}
               onSelectCoordinate={handleSelectCoordinateOnMap}
             />
+
             <AIRecommendationPanel
               parcelId={displayParcelId}
               parcelName={displayParcelName}
@@ -468,6 +278,201 @@ export default function DashboardPage() {
             />
           </section>
         </div>
+
+        <section className="mt-10 border-t-2 border-[#dce4dc] pt-8">
+          <div className="rounded-2xl border border-[#dce4dc] bg-[#eef3ec] p-6 sm:p-8">
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#176b4d]">
+                  Indicadores de Respaldo
+                </span>
+                <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-[#17231c]">
+                  Análisis Técnico y Proyecciones
+                </h2>
+                <p className="mt-1 text-sm text-[#647269]">
+                  Comportamiento esperado del suelo, lluvias recientes y calor acumulado para el desarrollo del maíz.
+                </p>
+              </div>
+              <span className="rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-[#176b4d] shadow-xs">
+                Actualizado para {displayParcelName}
+              </span>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-3">
+              <div className="rounded-2xl border border-[#dce4dc] bg-white p-6 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#647269]">
+                      Reserva de Humedad (7 días)
+                    </span>
+                    <span className="rounded-md bg-[#e8f1df] px-2.5 py-1 font-mono text-[10px] font-bold text-[#176b4d]">
+                      [XGBoost ML Forecast]
+                    </span>
+                  </div>
+
+                  <p className="mt-4 text-2xl font-extrabold text-[#17231c]">
+                    {loading ? "Calculando..." : soilStatusLabel}
+                  </p>
+                  <p className="mt-1 text-xs text-[#647269]">
+                    {loading
+                      ? "Evaluando retención en zona de raíz..."
+                      : gwetPct !== undefined && currentPct !== undefined
+                      ? `Proyección al ${gwetPct}% de saturación (hoy: ${currentPct}%)`
+                      : "Nivel estimado de agua disponible para la semilla"}
+                  </p>
+
+                  <div className="mt-4 space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-[#647269]">Saturación estimada</span>
+                      <span className="font-mono text-[#176b4d]">
+                        {loading ? "..." : gwetPct !== undefined ? `${gwetPct}%` : "N/D"}
+                      </span>
+                    </div>
+                    <div className="h-3 w-full overflow-hidden rounded-full bg-[#eef2ed]">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          gwetPct !== undefined && gwetPct >= 37
+                            ? "bg-emerald-600"
+                            : gwetPct !== undefined && gwetPct >= 35
+                            ? "bg-amber-500"
+                            : "bg-red-500"
+                        }`}
+                        style={{ width: `${gwetPct ?? 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-5 border-t border-[#eef2ed] pt-3 font-mono text-[11px] text-[#647269]">
+                  Ref. técnica: p50 {gwetP50 !== undefined ? gwetP50.toFixed(3) : "N/D"} · Banda p10–p90 (
+                  {forecast?.gwetrootP10 !== undefined && forecast?.gwetrootP90 !== undefined
+                    ? `${forecast.gwetrootP10.toFixed(2)}–${forecast.gwetrootP90.toFixed(2)}`
+                    : "N/D"}
+                  )
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-[#dce4dc] bg-white p-6 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#647269]">
+                      Lluvia Acumulada Reciente
+                    </span>
+                    <span className="rounded-md bg-[#e8f1df] px-2.5 py-1 text-[10px] font-bold text-[#176b4d]">
+                      Últimas 2 semanas
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex items-baseline gap-2">
+                    <span className="font-mono text-4xl font-extrabold tracking-tight text-[#176b4d]">
+                      {loading
+                        ? "..."
+                        : weather?.precip7dMm !== undefined
+                        ? `${weather.precip7dMm}`
+                        : "0"}
+                    </span>
+                    <span className="text-sm font-bold text-[#647269]">
+                      mm en los últimos 7 días
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-xl bg-[#f7f8f3] p-3">
+                      <span className="block text-[11px] font-semibold text-[#647269]">
+                        Últimos 3 días
+                      </span>
+                      <span className="mt-0.5 block font-mono text-lg font-extrabold text-[#17231c]">
+                        {loading
+                          ? "..."
+                          : weather?.precip3dMm !== undefined
+                          ? `${weather.precip3dMm} mm`
+                          : "N/D"}
+                      </span>
+                    </div>
+                    <div className="rounded-xl bg-[#f7f8f3] p-3">
+                      <span className="block text-[11px] font-semibold text-[#647269]">
+                        Últimos 14 días
+                      </span>
+                      <span className="mt-0.5 block font-mono text-lg font-extrabold text-[#17231c]">
+                        {loading
+                          ? "..."
+                          : weather?.precip14dMm !== undefined
+                          ? `${weather.precip14dMm} mm`
+                          : "N/D"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-5 border-t border-[#eef2ed] pt-3 text-xs font-medium text-[#647269]">
+                  Frecuencia:{" "}
+                  <strong className="text-[#17231c]">
+                    {loading
+                      ? "..."
+                      : weather?.rainyDays !== undefined
+                      ? `${weather.rainyDays} días con lluvia efectiva`
+                      : "Sin registro reciente"}
+                  </strong>{" "}
+                  en la quincena.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-[#dce4dc] bg-white p-6 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#647269]">
+                      Potencial Térmico del Ciclo
+                    </span>
+                    <span className="rounded-md bg-[#e8f1df] px-2.5 py-1 font-mono text-[10px] font-bold text-[#176b4d]">
+                      GDD Base 10 °C
+                    </span>
+                  </div>
+
+                  <p className="mt-4 text-2xl font-extrabold text-[#17231c]">
+                    {loading
+                      ? "Calculando..."
+                      : gddActual !== undefined && gddActual >= gddRequired
+                      ? "Calor Suficiente para Maíz"
+                      : "Calor Limitado en la Zona"}
+                  </p>
+                  <p className="mt-1 text-xs text-[#647269]">
+                    El maíz requiere al menos <strong>{gddRequired} °C·d</strong> para completar su maduración.
+                  </p>
+
+                  <div className="mt-4 space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-[#647269]">Meta del ciclo ({gddRequired} °C·d)</span>
+                      <span className="font-mono text-[#176b4d]">
+                        {loading
+                          ? "..."
+                          : gddActual !== undefined
+                          ? `${Math.round(gddActual)} °C·d`
+                          : "N/D"}
+                      </span>
+                    </div>
+                    <div className="h-3 w-full overflow-hidden rounded-full bg-[#eef2ed]">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          gddActual !== undefined && gddActual >= gddRequired
+                            ? "bg-green-500"
+                            : "bg-amber-500"
+                        }`}
+                        style={{ width: `${gddPct ?? 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-5 border-t border-[#eef2ed] pt-3 font-mono text-[11px] text-[#647269]">
+                  Cumplimiento térmico:{" "}
+                  <strong className="text-[#17231c]">
+                    {loading ? "..." : gddPct !== undefined ? `${gddPct}% del umbral mínimo` : "N/D"}
+                  </strong>
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
