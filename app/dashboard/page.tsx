@@ -37,53 +37,86 @@ function formatMetric(value: number | undefined, suffix: string): string {
   return value === undefined ? "Sin datos" : `${value} ${suffix}`;
 }
 
-// Renderiza el Dashboard conectado en vivo al endpoint RAG de FastAPI al cargar o cambiar de parcela.
+// Renderiza el Dashboard con el mapa interactivo real del profesor y sincronizacion RAG al hacer clic.
 export default function DashboardPage() {
   const [selectedParcel, setSelectedParcel] = useState(PARCEL_HISTORY[0]);
+  const [coords, setCoords] = useState<{ lat: number; lon: number }>({
+    lat: PARCEL_HISTORY[0].coords.lat,
+    lon: PARCEL_HISTORY[0].coords.lon,
+  });
+  const [customPoint, setCustomPoint] = useState(false);
   const [data, setData] = useState<DashboardData>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
-  const loadData = useCallback(async (signal?: AbortSignal) => {
-    if (signal?.aborted) return;
-    setLoading(true);
-    setError(undefined);
-    const results = await Promise.allSettled([
-      fetchWeather(selectedParcel.coords, signal),
-      fetchRecommendation(
-        selectedParcel.coords.lat,
-        selectedParcel.coords.lon,
-        selectedParcel.id,
-        signal
-      ),
-      fetchForecast(selectedParcel.coords, signal),
-    ]);
+  const loadData = useCallback(
+    async (targetLat: number, targetLon: number, farmId?: string, signal?: AbortSignal) => {
+      if (signal?.aborted) return;
+      setLoading(true);
+      setError(undefined);
+      const results = await Promise.allSettled([
+        fetchWeather({ lat: targetLat, lon: targetLon }, signal),
+        fetchRecommendation(targetLat, targetLon, farmId, signal),
+        fetchForecast({ lat: targetLat, lon: targetLon }, signal),
+      ]);
 
-    if (signal?.aborted) return;
+      if (signal?.aborted) return;
 
-    const [weather, recommendation, forecast] = results;
-    setData({
-      weather: weather.status === "fulfilled" ? weather.value : undefined,
-      recommendation: recommendation.status === "fulfilled" ? recommendation.value : undefined,
-      forecast: forecast.status === "fulfilled" ? forecast.value : undefined,
-    });
+      const [weather, recommendation, forecast] = results;
+      const recValue = recommendation.status === "fulfilled" ? recommendation.value : undefined;
+      const weatherValue =
+        weather.status === "fulfilled" ? weather.value : recValue?.telemetry;
 
-    const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
-    if (failures.length > 0) {
-      const firstError = failures[0].reason;
-      setError(firstError instanceof ApiError ? firstError.message : "No fue posible consultar el backend.");
-    }
-    setLoading(false);
-  }, [selectedParcel]);
+      setData({
+        weather: weatherValue,
+        recommendation: recValue,
+        forecast: forecast.status === "fulfilled" ? forecast.value : undefined,
+      });
+
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult => result.status === "rejected"
+      );
+      if (failures.length > 0 && !recValue) {
+        const firstError = failures[0].reason;
+        setError(
+          firstError instanceof ApiError
+            ? firstError.message
+            : "No fue posible consultar el backend."
+        );
+      }
+      setLoading(false);
+    },
+    []
+  );
 
   useEffect(() => {
     const controller = new AbortController();
-    queueMicrotask(() => void loadData(controller.signal));
+    const farmId = customPoint ? undefined : selectedParcel.id;
+    queueMicrotask(() => void loadData(coords.lat, coords.lon, farmId, controller.signal));
     return () => controller.abort();
-  }, [loadData]);
+  }, [coords.lat, coords.lon, customPoint, selectedParcel.id, loadData]);
+
+  // Actualiza la parcela seleccionada desde la barra lateral y centra sus coordenadas.
+  const handleSelectParcel = (parcel: (typeof PARCEL_HISTORY)[number]) => {
+    setSelectedParcel(parcel);
+    setCustomPoint(false);
+    setCoords({ lat: parcel.coords.lat, lon: parcel.coords.lon });
+  };
+
+  // Captura el clic en el mapa interactivo, coloca el pin y dispara la consulta RAG con esas coordenadas.
+  const handleSelectCoordinateOnMap = (lat: number, lon: number) => {
+    setCustomPoint(true);
+    setCoords({ lat, lon });
+  };
 
   const weather = data.weather;
   const recommendation = data.recommendation;
+  const displayParcelName = customPoint
+    ? recommendation?.locationLabel || "Punto seleccionado en La Frailesca"
+    : selectedParcel.nombre;
+  const displayParcelId = customPoint
+    ? `${coords.lat.toFixed(3)}, ${coords.lon.toFixed(3)}`
+    : selectedParcel.id;
 
   return (
     <div className="min-h-screen bg-[#f7f8f3] text-[#17231c]">
@@ -115,7 +148,9 @@ export default function DashboardPage() {
           </div>
           <button
             type="button"
-            onClick={() => void loadData()}
+            onClick={() =>
+              void loadData(coords.lat, coords.lon, customPoint ? undefined : selectedParcel.id)
+            }
             disabled={loading}
             className="rounded-lg bg-[#176b4d] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0e4935] disabled:cursor-wait disabled:opacity-60"
           >
@@ -128,7 +163,13 @@ export default function DashboardPage() {
             className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#e5b7ad] bg-[#fce1dc] px-4 py-3 text-sm text-[#8f3429]"
           >
             <span>{error}</span>
-            <button type="button" onClick={() => void loadData()} className="font-bold underline">
+            <button
+              type="button"
+              onClick={() =>
+                void loadData(coords.lat, coords.lon, customPoint ? undefined : selectedParcel.id)
+              }
+              className="font-bold underline"
+            >
               Reintentar
             </button>
           </div>
@@ -142,28 +183,31 @@ export default function DashboardPage() {
               </span>
             </div>
             <div className="mt-4 space-y-2">
-              {PARCEL_HISTORY.map((parcel) => (
-                <button
-                  key={parcel.id}
-                  onClick={() => setSelectedParcel(parcel)}
-                  className={`w-full rounded-lg border p-3 text-left ${
-                    selectedParcel.id === parcel.id
-                      ? "border-[#176b4d] bg-[#e8f1df]"
-                      : "border-[#dce4dc] hover:border-[#9fbaa6]"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-bold">{parcel.nombre}</span>
-                    <span className="text-[11px] font-bold text-[#176b4d]">{parcel.estado}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-[#647269]">
-                    {parcel.id} · {parcel.ubicacion}
-                  </p>
-                  <p className="mt-2 text-[11px] text-[#647269]">
-                    {parcel.ciclo} · {parcel.ha}
-                  </p>
-                </button>
-              ))}
+              {PARCEL_HISTORY.map((parcel) => {
+                const isActive = !customPoint && selectedParcel.id === parcel.id;
+                return (
+                  <button
+                    key={parcel.id}
+                    onClick={() => handleSelectParcel(parcel)}
+                    className={`w-full rounded-lg border p-3 text-left ${
+                      isActive
+                        ? "border-[#176b4d] bg-[#e8f1df]"
+                        : "border-[#dce4dc] hover:border-[#9fbaa6]"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-bold">{parcel.nombre}</span>
+                      <span className="text-[11px] font-bold text-[#176b4d]">{parcel.estado}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-[#647269]">
+                      {parcel.id} · {parcel.ubicacion}
+                    </p>
+                    <p className="mt-2 text-[11px] text-[#647269]">
+                      {parcel.ciclo} · {parcel.ha}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </aside>
           <section className="space-y-6">
@@ -185,14 +229,16 @@ export default function DashboardPage() {
               ))}
             </div>
             <MapboxViewer
-              parcelId={selectedParcel.id}
-              parcelName={selectedParcel.nombre}
-              coordinates={{ lat: selectedParcel.coords.lat, lng: selectedParcel.coords.lon }}
+              parcelId={displayParcelId}
+              parcelName={displayParcelName}
+              coordinates={{ lat: coords.lat, lng: coords.lon }}
               telemetry={weather}
+              semaforoColor={recommendation?.semaforoColor}
+              onSelectCoordinate={handleSelectCoordinateOnMap}
             />
             <AIRecommendationPanel
-              parcelId={selectedParcel.id}
-              parcelName={selectedParcel.nombre}
+              parcelId={displayParcelId}
+              parcelName={displayParcelName}
               droughtAlertLevel={recommendation?.droughtAlertLevel}
               confidence={recommendation?.confidence}
               uncertainty={recommendation?.uncertainty}
