@@ -45,7 +45,7 @@ const SOLUTION_CARDS = [
   },
 ];
 
-// Renderiza la Landing Page incluyendo Hero, seccion de El Problema, Solucion NASA+IA y filosofia.
+// Renderiza la Landing Page completa de K'INAL con Hero, Problema, Solucion NASA, CTA y Footer.
 export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
@@ -64,6 +64,12 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard"
+              className="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition hover:text-white sm:inline-block"
+            >
+              Dashboard
+            </Link>
             <Link
               href="/login"
               className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 transition hover:text-white"
@@ -194,18 +200,55 @@ export default function HomePage() {
               ))}
             </div>
 
-            <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 p-8 text-center">
+            <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 p-8 text-center space-y-4">
               <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400">
                 Nuestra Filosofía de Decisión
               </p>
-              <blockquote className="mt-3 text-xl font-bold italic text-white sm:text-2xl">
+              <blockquote className="text-xl font-bold italic text-white sm:text-2xl">
                 &ldquo;El sistema presenta evidencia, incertidumbre y opciones; la
                 persona decide.&rdquo;
               </blockquote>
+              <div className="pt-2 flex flex-wrap justify-center gap-4">
+                <Link
+                  href="/login"
+                  className="rounded-lg border border-slate-700 bg-slate-950 px-5 py-2 text-xs font-semibold text-slate-200 hover:border-emerald-500"
+                >
+                  Acceder a mi cuenta
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500"
+                >
+                  Ver Demo en Vivo
+                </Link>
+              </div>
             </div>
           </div>
         </section>
       </main>
+
+      <footer className="border-t border-slate-900 bg-slate-950 px-6 py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 sm:flex-row">
+          <div>
+            <span className="font-bold text-white">K&apos;INAL</span>
+            <p className="mt-1 text-xs text-slate-500">
+              Earth Observation &amp; Agricultural Intelligence · Maíz de temporal en La Frailesca, Chiapas.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-6 text-xs font-medium text-slate-400">
+            <Link href="/login" className="hover:text-emerald-400">
+              Iniciar Sesión
+            </Link>
+            <Link href="/register" className="hover:text-emerald-400">
+              Registro de Productores
+            </Link>
+            <Link href="/dashboard" className="hover:text-emerald-400">
+              Visor Agroclimático
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
