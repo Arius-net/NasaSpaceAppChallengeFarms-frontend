@@ -1,1 +1,35 @@
 @import "tailwindcss";
+
+:root {
+  --ink: #17231c;
+  --muted: #647269;
+  --paper: #f7f8f3;
+  --surface: #ffffff;
+  --line: #dce4dc;
+  --green: #176b4d;
+  --green-dark: #0e4935;
+  --lime: #d7edb4;
+  --amber: #f0ad3d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+button,
+a,
+input {
+  transition: 160ms ease;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid #9ed46b;
+  outline-offset: 2px;
+}
