@@ -11,7 +11,6 @@ import {
   ForecastResponse,
   fetchForecast,
   fetchRecommendation,
-  fetchWeather,
 } from "@/services/api";
 
 const PARCEL_HISTORY = [
@@ -52,37 +51,32 @@ export default function DashboardPage() {
       if (signal?.aborted) return;
       setLoading(true);
       setError(undefined);
-      const results = await Promise.allSettled([
-        fetchWeather({ lat: targetLat, lon: targetLon }, signal),
-        fetchRecommendation(targetLat, targetLon, farmId, signal),
-        fetchForecast({ lat: targetLat, lon: targetLon }, signal),
-      ]);
 
-      if (signal?.aborted) return;
+      try {
+        const [recommendation, forecast] = await Promise.all([
+          fetchRecommendation(targetLat, targetLon, farmId, signal),
+          fetchForecast(targetLat, targetLon, signal),
+        ]);
 
-      const [weather, recommendation, forecast] = results;
-      const recValue = recommendation.status === "fulfilled" ? recommendation.value : undefined;
-      const weatherValue =
-        weather.status === "fulfilled" ? weather.value : recValue?.telemetry;
+        if (signal?.aborted) return;
 
-      setData({
-        weather: weatherValue,
-        recommendation: recValue,
-        forecast: forecast.status === "fulfilled" ? forecast.value : undefined,
-      });
-
-      const failures = results.filter(
-        (result): result is PromiseRejectedResult => result.status === "rejected"
-      );
-      if (failures.length > 0 && !recValue) {
-        const firstError = failures[0].reason;
+        setData({
+          weather: recommendation.telemetry,
+          recommendation,
+          forecast,
+        });
+      } catch (err) {
+        if (signal?.aborted) return;
         setError(
-          firstError instanceof ApiError
-            ? firstError.message
+          err instanceof ApiError
+            ? err.message
             : "No fue posible consultar el backend."
         );
+      } finally {
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
     },
     []
   );
@@ -107,6 +101,23 @@ export default function DashboardPage() {
 
   const weather = data.weather;
   const recommendation = data.recommendation;
+  const forecast = data.forecast;
+  const viabilityMetrics = forecast?.viabilityMetrics || recommendation?.viabilityMetrics;
+
+  const gwetCurrent = forecast?.gwetrootCurrent ?? weather?.smapSoilMoisture;
+  const gwetP50 = forecast?.gwetrootP50;
+  const gwetDelta =
+    gwetP50 !== undefined && gwetCurrent !== undefined
+      ? Number((gwetP50 - gwetCurrent).toFixed(3))
+      : undefined;
+
+  const gddActual = viabilityMetrics?.gddAnualBase10C;
+  const gddRequired = 1530;
+  const gddPct =
+    gddActual !== undefined
+      ? Math.min(100, Math.round((gddActual / gddRequired) * 100))
+      : undefined;
+
   const displayParcelName = customPoint
     ? recommendation?.locationLabel || "Punto seleccionado en La Frailesca"
     : selectedParcel.nombre;
@@ -211,7 +222,7 @@ export default function DashboardPage() {
               {CLIMATE_CARDS.map(([label, key, source]) => (
                 <div key={label} className="rounded-xl border border-[#dce4dc] bg-white p-4 shadow-sm">
                   <p className="text-xs font-bold uppercase tracking-wider text-[#647269]">{label}</p>
-                  <p className="mt-2 text-2xl font-extrabold">
+                  <p className="mt-2 font-mono text-2xl font-extrabold">
                     {loading
                       ? "Cargando..."
                       : key === "powerTempC"
@@ -224,6 +235,218 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+
+            <div className="rounded-xl border border-[#dce4dc] bg-white p-5 shadow-sm">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-[#dce4dc] pb-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#176b4d]">
+                    Pulso Agroclimático y Pronóstico
+                  </p>
+                  <h2 className="mt-0.5 text-base font-extrabold text-[#17231c]">
+                    Indicadores Predictivos y Balance Térmico-Pluvial
+                  </h2>
+                </div>
+                <span className="rounded-md border border-[#cbd9ce] bg-[#f7f8f3] px-2.5 py-1 font-mono text-[11px] font-semibold text-[#176b4d]">
+                  Horizonte t+7 días · Escala nativa 0–1
+                </span>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-xl border border-[#dce4dc] bg-[#f7f8f3] p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#647269]">
+                        Humedad a 7 días (GWETROOT)
+                      </span>
+                      <span className="rounded bg-[#176b4d] px-2 py-0.5 font-mono text-[10px] font-bold text-white">
+                        [XGBoost ML Forecast]
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex items-baseline gap-3">
+                      <div>
+                        <span className="block text-[10px] font-semibold uppercase text-[#647269]">
+                          Pronóstico p50
+                        </span>
+                        <span className="font-mono text-2xl font-extrabold text-[#176b4d]">
+                          {loading
+                            ? "..."
+                            : gwetP50 !== undefined
+                            ? gwetP50.toFixed(3)
+                            : "Sin datos"}
+                        </span>
+                      </div>
+                      <span className="font-mono text-xs text-[#647269]">vs</span>
+                      <div>
+                        <span className="block text-[10px] font-semibold uppercase text-[#647269]">
+                          Actual
+                        </span>
+                        <span className="font-mono text-lg font-bold text-[#17231c]">
+                          {loading
+                            ? "..."
+                            : gwetCurrent !== undefined
+                            ? gwetCurrent.toFixed(3)
+                            : "Sin datos"}
+                        </span>
+                      </div>
+                      {!loading && gwetDelta !== undefined && (
+                        <span
+                          className={`ml-auto rounded px-2 py-0.5 font-mono text-xs font-bold ${
+                            gwetDelta >= 0
+                              ? "bg-[#d7edb4] text-[#176b4d]"
+                              : "bg-[#fff0cf] text-[#8a5a08]"
+                          }`}
+                        >
+                          {gwetDelta >= 0 ? `+${gwetDelta}` : gwetDelta}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 border-t border-[#dce4dc] pt-2.5 flex items-center justify-between font-mono text-[11px] text-[#647269]">
+                    <span>
+                      Banda p10–p90:{" "}
+                      {forecast?.gwetrootP10 !== undefined && forecast?.gwetrootP90 !== undefined
+                        ? `${forecast.gwetrootP10.toFixed(2)} – ${forecast.gwetrootP90.toFixed(2)}`
+                        : "N/D"}
+                    </span>
+                    <span className="font-bold text-[#176b4d]">
+                      {forecast?.forecastClass || "Estable"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#dce4dc] bg-[#f7f8f3] p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#647269]">
+                        Lluvia Acumulada Multi-Ventana
+                      </span>
+                      <span className="rounded border border-[#cbd9ce] bg-white px-2 py-0.5 font-mono text-[10px] font-bold text-[#176b4d]">
+                        [PRECTOTCORR]
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-lg border border-[#dce4dc] bg-white p-2">
+                        <span className="block text-[10px] font-bold uppercase text-[#647269]">
+                          3 Días
+                        </span>
+                        <span className="mt-0.5 block font-mono text-base font-extrabold text-[#17231c]">
+                          {loading
+                            ? "..."
+                            : weather?.precip3dMm !== undefined
+                            ? `${weather.precip3dMm} mm`
+                            : "N/D"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg border border-[#176b4d]/40 bg-white p-2">
+                        <span className="block text-[10px] font-bold uppercase text-[#176b4d]">
+                          7 Días
+                        </span>
+                        <span className="mt-0.5 block font-mono text-base font-extrabold text-[#176b4d]">
+                          {loading
+                            ? "..."
+                            : weather?.precip7dMm !== undefined
+                            ? `${weather.precip7dMm} mm`
+                            : "N/D"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg border border-[#dce4dc] bg-white p-2">
+                        <span className="block text-[10px] font-bold uppercase text-[#647269]">
+                          14 Días
+                        </span>
+                        <span className="mt-0.5 block font-mono text-base font-extrabold text-[#17231c]">
+                          {loading
+                            ? "..."
+                            : weather?.precip14dMm !== undefined
+                            ? `${weather.precip14dMm} mm`
+                            : "N/D"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 border-t border-[#dce4dc] pt-2.5 flex items-center justify-between font-mono text-[11px] text-[#647269]">
+                    <span>Días con lluvia (&ge;1 mm):</span>
+                    <span className="font-bold text-[#17231c]">
+                      {loading
+                        ? "..."
+                        : weather?.rainyDays !== undefined
+                        ? `${weather.rainyDays} de 14 días`
+                        : "Sin datos"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#dce4dc] bg-[#f7f8f3] p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#647269]">
+                        Potencial Térmico (GDD)
+                      </span>
+                      <span className="rounded border border-[#cbd9ce] bg-white px-2 py-0.5 font-mono text-[10px] font-bold text-[#8a5a08]">
+                        [Base 10 °C]
+                      </span>
+                    </div>
+
+                    <div className="mt-3 flex items-baseline justify-between">
+                      <div>
+                        <span className="block text-[10px] font-semibold uppercase text-[#647269]">
+                          GDD Anual Estimado
+                        </span>
+                        <span className="font-mono text-2xl font-extrabold text-[#17231c]">
+                          {loading
+                            ? "..."
+                            : gddActual !== undefined
+                            ? `${Math.round(gddActual)} °C·d`
+                            : "Sin datos"}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="block text-[10px] font-semibold uppercase text-[#647269]">
+                          Requerido Ciclo
+                        </span>
+                        <span className="font-mono text-sm font-bold text-[#176b4d]">
+                          {gddRequired} °C·d
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-[#dce4dc]">
+                      <div
+                        className={`h-full transition-all ${
+                          gddActual !== undefined && gddActual >= gddRequired
+                            ? "bg-[#176b4d]"
+                            : "bg-[#d97706]"
+                        }`}
+                        style={{ width: `${gddPct ?? 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 border-t border-[#dce4dc] pt-2.5 flex items-center justify-between font-mono text-[11px] text-[#647269]">
+                    <span>Viabilidad térmica:</span>
+                    <span
+                      className={`font-bold ${
+                        gddActual !== undefined && gddActual >= gddRequired
+                          ? "text-[#176b4d]"
+                          : "text-[#8a5a08]"
+                      }`}
+                    >
+                      {loading
+                        ? "..."
+                        : gddActual !== undefined
+                        ? gddActual >= gddRequired
+                          ? "Cumple requerimiento"
+                          : "Por debajo del óptimo"
+                        : viabilityMetrics?.verdict || "Sin datos"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <MapboxViewer
               parcelId={displayParcelId}
               parcelName={displayParcelName}

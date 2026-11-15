@@ -7,7 +7,19 @@ export interface ClimateTelemetry {
   powerTempC?: number;
   smapSoilMoisture?: number;
   imergPrecipMm?: number;
+  precip3dMm?: number;
+  precip7dMm?: number;
+  precip14dMm?: number;
+  rainyDays?: number;
   updatedAt?: string;
+}
+
+export interface ViabilityMetrics {
+  verdict?: string;
+  gddAnualBase10C?: number;
+  gddRequiredC?: number;
+  precipAnualMm?: number;
+  precipCicloMm?: number;
 }
 
 export interface AgronomicRecommendationResponse {
@@ -20,6 +32,7 @@ export interface AgronomicRecommendationResponse {
   locationLabel?: string;
   llmSummary?: string;
   viability?: string;
+  viabilityMetrics?: ViabilityMetrics;
   assumptions?: string[];
   dataVintage?: string;
   uncertainty?: string;
@@ -28,8 +41,20 @@ export interface AgronomicRecommendationResponse {
 }
 
 export interface ForecastResponse {
-  values: unknown[];
+  status?: string;
+  horizonDays?: number;
+  gwetrootCurrent?: number;
+  gwettopCurrent?: number;
+  currentClass?: string;
+  gwetrootP10?: number;
+  gwetrootP50?: number;
+  gwetrootP90?: number;
+  forecastClass?: string;
+  riskNote?: string;
+  modelType?: string;
   degradation?: string;
+  degradationLevel?: string;
+  viabilityMetrics?: ViabilityMetrics;
 }
 
 export class ApiError extends Error {
@@ -93,6 +118,20 @@ function validateCoordinates(coordinates: Coordinates): void {
   }
 }
 
+function extractViabilityMetrics(payload: Record<string, unknown>): ViabilityMetrics | undefined {
+  const viab = readRecord(payload, ["viabilidad", "viability"]);
+  if (!viab) return undefined;
+  const evidencia = readRecord(viab, ["evidencia", "evidence"]);
+  const umbrales = readRecord(viab, ["umbrales_usados", "thresholds"]);
+  return {
+    verdict: readString(viab, ["veredicto", "verdict"]),
+    gddAnualBase10C: evidencia ? readNumber(evidencia, ["gdd_anual_base10_c"]) : undefined,
+    gddRequiredC: (umbrales ? readNumber(umbrales, ["gdd_min_maiz_c"]) : undefined) ?? 1530,
+    precipAnualMm: evidencia ? readNumber(evidencia, ["precip_anual_mm"]) : undefined,
+    precipCicloMm: evidencia ? readNumber(evidencia, ["precip_ciclo_abr_oct_mm"]) : undefined,
+  };
+}
+
 async function getJson(path: string, coordinates: Coordinates, signal?: AbortSignal): Promise<Record<string, unknown>> {
   validateCoordinates(coordinates);
   const response = await fetch(buildUrl(path, coordinates), { signal, cache: "no-store" });
@@ -110,10 +149,15 @@ export async function fetchWeather(coordinates: Coordinates, signal?: AbortSigna
   const data = await getJson("weather", coordinates, signal);
   const summary = readRecord(data, ["resumen_meteorologico", "resumen", "summary"]);
   const soil = summary ? readRecord(summary, ["humedad_suelo_estimada", "soil_moisture"]) : undefined;
+  const src = summary || data;
   return {
-    powerTempC: readNumber(summary || data, ["powerTempC", "temperature", "temperatura_media_c", "temperature_c", "temp_c"]),
-    smapSoilMoisture: readNumber(soil || data, ["smapSoilMoisture", "soil_moisture", "smSoilMoisture", "sm_radicular_v_v"]),
-    imergPrecipMm: readNumber(summary || data, ["imergPrecipMm", "precipitation", "precipitacion_acumulada_7d_mm", "precipitation_mm", "precip_mm"]),
+    powerTempC: readNumber(src, ["powerTempC", "temperature", "temperatura_media_c", "temperature_c", "temp_c"]),
+    smapSoilMoisture: readNumber(soil || src, ["smapSoilMoisture", "soil_moisture", "smSoilMoisture", "sm_radicular_v_v"]),
+    imergPrecipMm: readNumber(src, ["imergPrecipMm", "precipitation", "precipitacion_acumulada_7d_mm", "precipitation_mm", "precip_mm"]),
+    precip3dMm: readNumber(src, ["precipitacion_acumulada_3d_mm", "precip3dMm"]),
+    precip7dMm: readNumber(src, ["precipitacion_acumulada_7d_mm", "precip7dMm"]),
+    precip14dMm: readNumber(src, ["precipitacion_acumulada_14d_mm", "precip14dMm"]),
+    rainyDays: readNumber(src, ["dias_con_lluvia_significativa", "rainyDays"]),
     updatedAt: readString(data, ["updatedAt", "updated_at", "timestamp", "timestamp_consulta"]),
   };
 }
@@ -221,6 +265,7 @@ export async function fetchRecommendation(
       "respuesta",
     ]),
     viability: readString(payload, ["viabilidad", "viability"]),
+    viabilityMetrics: extractViabilityMetrics(payload),
     assumptions: Array.isArray(source.supuestos)
       ? source.supuestos.filter((item): item is string => typeof item === "string")
       : undefined,
@@ -232,17 +277,57 @@ export async function fetchRecommendation(
           powerTempC: readNumber(weatherSummary, ["temperatura_media_c", "powerTempC"]),
           smapSoilMoisture: readNumber(soilRecord || weatherSummary, ["sm_radicular_v_v", "smapSoilMoisture"]),
           imergPrecipMm: readNumber(weatherSummary, ["precipitacion_acumulada_7d_mm", "imergPrecipMm"]),
+          precip3dMm: readNumber(weatherSummary, ["precipitacion_acumulada_3d_mm", "precip3dMm"]),
+          precip7dMm: readNumber(weatherSummary, ["precipitacion_acumulada_7d_mm", "precip7dMm"]),
+          precip14dMm: readNumber(weatherSummary, ["precipitacion_acumulada_14d_mm", "precip14dMm"]),
+          rainyDays: readNumber(weatherSummary, ["dias_con_lluvia_significativa", "rainyDays"]),
         }
       : undefined,
   };
 }
 
-export async function fetchForecast(coordinates: Coordinates, signal?: AbortSignal): Promise<ForecastResponse> {
-  const data = await getJson("forecast", coordinates, signal);
-  const values = Array.isArray(data.forecast) ? data.forecast : Array.isArray(data.values) ? data.values : [];
-  const degradation = readRecord(data, ["degradacion", "degradation"]);
+export async function fetchForecast(
+  lat: number,
+  lon: number,
+  signal?: AbortSignal
+): Promise<ForecastResponse> {
+  validateCoordinates({ lat, lon });
+  const response = await fetch(`${API_BASE_URL}/api/forecast?lat=${lat}&lon=${lon}`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    signal,
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new ApiError(`El backend respondió con HTTP ${response.status}.`, response.status);
+  }
+  const data: unknown = await response.json();
+  if (!isRecord(data)) {
+    throw new ApiError("La respuesta de /api/forecast no tiene un formato válido.");
+  }
+
+  const estadoActual = readRecord(data, ["estado_actual"]);
+  const pronostico = readRecord(data, ["pronostico"]);
+  const riesgo = pronostico ? readRecord(pronostico, ["riesgo_anticipado"]) : undefined;
+  const degradacion = readRecord(data, ["degradacion", "degradation"]);
+  const modelo = readRecord(data, ["modelo"]);
+
   return {
-    values,
-    degradation: readString(data, ["degradacion", "degradation"]) || (degradation ? readString(degradation, ["leyenda", "legend", "nota"]) : undefined),
+    status: readString(data, ["status"]),
+    horizonDays: readNumber(data, ["horizonte_dias"]) ?? 7,
+    gwetrootCurrent: estadoActual ? readNumber(estadoActual, ["gwetroot"]) : undefined,
+    gwettopCurrent: estadoActual ? readNumber(estadoActual, ["gwettop"]) : undefined,
+    currentClass: estadoActual ? readString(estadoActual, ["clasificacion"]) : undefined,
+    gwetrootP10: pronostico ? readNumber(pronostico, ["gwetroot_p10"]) : undefined,
+    gwetrootP50: pronostico ? readNumber(pronostico, ["gwetroot_p50"]) : undefined,
+    gwetrootP90: pronostico ? readNumber(pronostico, ["gwetroot_p90"]) : undefined,
+    forecastClass: pronostico ? readString(pronostico, ["clasificacion_escenario_central"]) : undefined,
+    riskNote: riesgo ? readString(riesgo, ["nota"]) : undefined,
+    modelType: modelo ? readString(modelo, ["tipo"]) : undefined,
+    degradationLevel: degradacion ? readString(degradacion, ["nivel"]) : undefined,
+    degradation:
+      readString(data, ["degradacion", "degradation"]) ||
+      (degradacion ? readString(degradacion, ["leyenda", "legend", "nota"]) : undefined),
+    viabilityMetrics: extractViabilityMetrics(data),
   };
 }
