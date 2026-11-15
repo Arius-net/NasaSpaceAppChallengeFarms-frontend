@@ -1,6 +1,51 @@
 import Link from "next/link";
 
-// Renderiza la Landing Page de K'INAL con la barra de navegacion y la seccion Hero principal.
+const PROBLEM_CARDS = [
+  {
+    titulo: "Lluvias Irregulares",
+    descripcion:
+      "La variabilidad interanual altera el calendario tradicional de siembra en Villaflores, Villa Corzo y La Concordia.",
+  },
+  {
+    titulo: "Falsos Inicios de Temporal",
+    descripcion:
+      "Primeras precipitaciones aisladas detonan siembras prematuras que fracasan por falta de humedad radicular sostenida.",
+  },
+  {
+    titulo: "Impacto de la Canícula",
+    descripcion:
+      "La sequía intraestival en etapas críticas de floración y llenado de grano compromete severamente el rendimiento.",
+  },
+];
+
+const SOLUTION_CARDS = [
+  {
+    tag: "NASA POWER",
+    titulo: "Radiación y Temperatura",
+    descripcion:
+      "Monitoreo de temperatura superficial, radiación solar y balance térmico diario para estimar evapotranspiración.",
+  },
+  {
+    tag: "NASA SMAP",
+    titulo: "Humedad de Suelo",
+    descripcion:
+      "Lecturas satelitales de humedad en la zona radicular para distinguir lluvias superficiales de recarga hídrica real.",
+  },
+  {
+    tag: "NASA IMERG",
+    titulo: "Precipitación Satelital",
+    descripcion:
+      "Series de lluvia acumulada y detección de anomalías pluviales en tiempo cuasi-real sobre La Frailesca.",
+  },
+  {
+    tag: "IA Generativa (RAG)",
+    titulo: "Síntesis con Historial de Parcela",
+    descripcion:
+      "Cruza las tres fuentes de la NASA con la bitácora histórica del predio para redactar recomendaciones transparentes.",
+  },
+];
+
+// Renderiza la Landing Page incluyendo Hero, seccion de El Problema, Solucion NASA+IA y filosofia.
 export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
@@ -78,6 +123,85 @@ export default function HomePage() {
               >
                 Registrar Parcela
               </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-6 py-20 space-y-12">
+          <div className="max-w-3xl space-y-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">
+              El Problema en La Frailesca, Chiapas
+            </span>
+            <h2 className="text-3xl font-bold text-white">
+              Sembrar maíz de temporal ya no puede depender solo del calendario histórico
+            </h2>
+            <p className="text-sm leading-relaxed text-slate-400">
+              Los productores enfrentan ventanas de siembra cada vez más estrechas
+              debido a lluvias irregulares, falsos inicios de temporal y el riesgo
+              latente de la canícula.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {PROBLEM_CARDS.map((item) => (
+              <div
+                key={item.titulo}
+                className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6"
+              >
+                <h3 className="text-lg font-bold text-white">{item.titulo}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                  {item.descripcion}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-t border-slate-900 bg-slate-900/30 py-20 px-6">
+          <div className="mx-auto max-w-6xl space-y-12">
+            <div className="max-w-3xl space-y-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                Nuestra Solución · Datos NASA + IA (RAG)
+              </span>
+              <h2 className="text-3xl font-bold text-white">
+                Evidencia satelital cruzada con la memoria de tu parcela
+              </h2>
+              <p className="text-sm leading-relaxed text-slate-400">
+                K&apos;INAL unifica tres misiones de observación terrestre de la NASA
+                con inteligencia artificial generativa para traducir variables
+                climáticas complejas en escenarios agronómicos claros.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {SOLUTION_CARDS.map((card) => (
+                <div
+                  key={card.tag}
+                  className="rounded-2xl border border-slate-800 bg-slate-950/80 p-6 flex flex-col justify-between"
+                >
+                  <div>
+                    <span className="inline-block rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-mono text-xs font-semibold text-emerald-400">
+                      {card.tag}
+                    </span>
+                    <h3 className="mt-4 text-base font-bold text-white">
+                      {card.titulo}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                      {card.descripcion}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 p-8 text-center">
+              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400">
+                Nuestra Filosofía de Decisión
+              </p>
+              <blockquote className="mt-3 text-xl font-bold italic text-white sm:text-2xl">
+                &ldquo;El sistema presenta evidencia, incertidumbre y opciones; la
+                persona decide.&rdquo;
+              </blockquote>
             </div>
           </div>
         </section>
