@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Compass, Globe2, Layers, MapPin, Navigation } from "lucide-react";
+import { Compass, Layers, MapPin } from "lucide-react";
 import type { ClimateTelemetry } from "@/services/api";
 
 const WORKER_CDN_URL = "https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl-csp-worker.js";
@@ -23,33 +23,25 @@ export interface MapboxViewerProps {
   coordinates?: { lat: number; lng: number };
   telemetry?: ClimateTelemetry;
   semaforoColor?: string;
-  apiBaseUrl?: string;
   onSelectCoordinate?: (lat: number, lon: number) => void;
 }
 
-const FRAILESCA_LOCATIONS = [
-  { name: "Villaflores (Centro)", lat: 16.2333, lon: -93.2667, zoom: 10.5 },
-  { name: "Villa Corzo", lat: 16.1852, lon: -93.2689, zoom: 10.5 },
-  { name: "La Concordia", lat: 16.1165, lon: -92.6885, zoom: 10.2 },
-  { name: "Ángel Albino Corzo", lat: 15.8731, lon: -92.7239, zoom: 10.2 },
-  { name: "El Parral", lat: 16.3686, lon: -93.0086, zoom: 10.5 },
-  { name: "Montecristo de Guerrero", lat: 15.7442, lon: -92.6225, zoom: 10.5 },
-];
-
-const FRAILESCA_BBOX_COORDS = [
-  [-93.771, 15.6645],
-  [-92.2955, 15.6645],
-  [-92.2955, 16.5858],
-  [-93.771, 16.5858],
-  [-93.771, 15.6645],
+const PRESET_LOCATIONS = [
+  { name: "Villaflores", region: "Frailesca", lat: 16.2333, lon: -93.2667 },
+  { name: "La Concordia", region: "Frailesca", lat: 16.1165, lon: -92.6885 },
+  { name: "Tapachula", region: "Sur de Chiapas", lat: 14.9039, lon: -92.2574 },
+  { name: "Palenque", region: "Norte de Chiapas", lat: 17.5095, lon: -91.9829 },
+  { name: "Querétaro", region: "Centro de México", lat: 20.5888, lon: -100.3899 },
+  { name: "Ciudad de México", region: "Centro de México", lat: 19.4326, lon: -99.1332 },
+  { name: "Monterrey", region: "Norte de México", lat: 25.6866, lon: -100.3161 },
+  { name: "Mérida", region: "Península de Yucatán", lat: 20.9674, lon: -89.5926 },
 ];
 
 export default function MapboxViewer({
   parcelId = "FRA-01",
-  parcelName = "Villaflores (La Frailesca)",
+  parcelName = "Punto seleccionado",
   coordinates = { lat: 16.2333, lng: -93.2667 },
   semaforoColor = "signal",
-  apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
   onSelectCoordinate,
 }: MapboxViewerProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -123,64 +115,6 @@ export default function MapboxViewer({
 
     markerRef.current = marker;
 
-    map.on("load", async () => {
-      map.addSource("frailesca-bbox", {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "Polygon",
-            coordinates: [FRAILESCA_BBOX_COORDS],
-          },
-        },
-      });
-
-      map.addLayer({
-        id: "frailesca-bbox-line",
-        type: "line",
-        source: "frailesca-bbox",
-        paint: {
-          "line-color": "#F59E0B",
-          "line-width": 2,
-          "line-dasharray": [3, 2],
-        },
-      });
-
-      try {
-        const res = await fetch(`${apiBaseUrl.replace(/\/+$/, "")}/api/frailesca-geojson`);
-        if (res.ok) {
-          const geojson = await res.json();
-          map.addSource("frailesca-municipios", {
-            type: "geojson",
-            data: geojson,
-          });
-
-          map.addLayer({
-            id: "frailesca-municipios-fill",
-            type: "fill",
-            source: "frailesca-municipios",
-            paint: {
-              "fill-color": "#176b4d",
-              "fill-opacity": 0.22,
-            },
-          });
-
-          map.addLayer({
-            id: "frailesca-municipios-outline",
-            type: "line",
-            source: "frailesca-municipios",
-            paint: {
-              "line-color": "#F4F1EA",
-              "line-width": 1.5,
-            },
-          });
-        }
-      } catch {
-        return;
-      }
-    });
-
     map.on("click", (e) => {
       const clickedLat = Number(e.lngLat.lat.toFixed(4));
       const clickedLon = Number(e.lngLat.lng.toFixed(4));
@@ -219,11 +153,11 @@ export default function MapboxViewer({
     });
   }, [coordinates.lat, coordinates.lng, semaforoColor]);
 
-  const handleResetFrailescaView = () => {
+  const handleCenterPoint = () => {
     if (!mapRef.current) return;
     mapRef.current.flyTo({
-      center: [-93.2667, 16.2333],
-      zoom: 9.2,
+      center: [coordinates.lng, coordinates.lat],
+      zoom: 9.5,
       duration: 800,
     });
   };
@@ -253,7 +187,7 @@ export default function MapboxViewer({
           <div className="flex items-center gap-2">
             <Compass className="w-4 h-4 text-[#176b4d]" />
             <h2 className="text-base sm:text-lg font-extrabold text-[#17231c]">
-              Explorador Satelital • La Frailesca, Chiapas ({parcelId})
+              Explorador Satelital • {parcelName} ({parcelId})
             </h2>
           </div>
           <p className="text-xs text-[#647269] mt-0.5">
@@ -264,11 +198,10 @@ export default function MapboxViewer({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleResetFrailescaView}
+            onClick={handleCenterPoint}
             className="px-2.5 py-1.5 rounded-lg bg-[#e8f1df] hover:bg-[#d7edb4] text-[#176b4d] font-mono text-xs font-bold flex items-center gap-1.5 transition border border-[#cbd9ce]"
           >
-            <Globe2 className="w-3.5 h-3.5 text-[#176b4d]" />
-            Centrar La Frailesca
+            Centrar punto
           </button>
 
           <div className="flex items-center gap-1 bg-[#f7f8f3] p-1 rounded-lg border border-[#dce4dc] text-xs font-mono">
@@ -299,30 +232,33 @@ export default function MapboxViewer({
         </div>
       </div>
 
-      <div className="px-4 py-2.5 bg-[#f7f8f3] border-b border-[#dce4dc] flex flex-wrap items-center gap-1.5 text-xs">
-        <span className="font-mono text-[#176b4d] font-bold flex items-center gap-1 mr-1">
-          <Navigation className="w-3 h-3" />
-          Municipios Frailesca:
-        </span>
-        {FRAILESCA_LOCATIONS.map((loc) => {
-          const isActive =
-            Math.abs(coordinates.lat - loc.lat) < 0.03 &&
-            Math.abs(coordinates.lng - loc.lon) < 0.03;
-          return (
-            <button
-              key={loc.name}
-              type="button"
-              onClick={() => onSelectCoordinate?.(loc.lat, loc.lon)}
-              className={`px-2.5 py-1 rounded-full font-mono text-[11px] transition border ${
-                isActive
-                  ? "bg-[#176b4d] text-white border-[#176b4d] font-bold"
-                  : "bg-white text-[#17231c] border-[#dce4dc] hover:border-[#176b4d]"
-              }`}
-            >
-              {loc.name}
-            </button>
-          );
-        })}
+      <div className="border-b border-[#dce4dc] bg-[#f7f8f3] px-4 py-3">
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[#647269]">
+          Puntos de consulta
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {PRESET_LOCATIONS.map((location) => {
+            const isActive =
+              Math.abs(coordinates.lat - location.lat) < 0.01 &&
+              Math.abs(coordinates.lng - location.lon) < 0.01;
+
+            return (
+              <button
+                key={`${location.name}-${location.region}`}
+                type="button"
+                title={location.region}
+                onClick={() => onSelectCoordinate?.(location.lat, location.lon)}
+                className={`rounded-full border px-2.5 py-1 font-mono text-[11px] transition ${
+                  isActive
+                    ? "border-[#176b4d] bg-[#176b4d] font-bold text-white"
+                    : "border-[#dce4dc] bg-white text-[#17231c] hover:border-[#176b4d]"
+                }`}
+              >
+                {location.name} · {location.region}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="relative w-full h-96 min-h-[420px]">

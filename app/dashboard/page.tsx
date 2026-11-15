@@ -135,7 +135,7 @@ export default function DashboardPage() {
       : undefined;
 
   const displayParcelName = customPoint
-    ? recommendation?.locationLabel || "Punto seleccionado en La Frailesca"
+    ? recommendation?.locationLabel || "Punto seleccionado"
     : selectedParcel.nombre;
   const displayParcelId = customPoint
     ? `${coords.lat.toFixed(3)}, ${coords.lon.toFixed(3)}`
