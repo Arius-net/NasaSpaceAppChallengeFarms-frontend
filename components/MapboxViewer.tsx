@@ -6,7 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Compass, Layers, MapPin } from "lucide-react";
 import type { ClimateTelemetry } from "@/services/api";
 
-const WORKER_CDN_URL = "https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl-csp-worker.js";
+const WORKER_CDN_URL = 'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl-csp-worker.js';
 const maplibreConfig = (
   "default" in maplibregl && maplibregl.default ? maplibregl.default : maplibregl
 ) as { workerUrl?: string; setWorkerUrl?: (url: string) => void };
