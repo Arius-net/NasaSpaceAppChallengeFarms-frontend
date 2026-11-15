@@ -102,6 +102,7 @@ async function getJson(path: string, coordinates: Coordinates, signal?: AbortSig
   return payload;
 }
 
+// Consulta el resumen meteorologico de la parcela desde el backend FastAPI.
 export async function fetchWeather(coordinates: Coordinates, signal?: AbortSignal): Promise<ClimateTelemetry> {
   const data = await getJson("weather", coordinates, signal);
   const summary = readRecord(data, ["resumen_meteorologico", "summary"]);
@@ -114,29 +115,101 @@ export async function fetchWeather(coordinates: Coordinates, signal?: AbortSigna
   };
 }
 
+// Solicita via POST /api/recommendation el diagnostico RAG de IA y su incertidumbre asociada.
 export async function fetchRecommendation(
-  coordinates: Coordinates,
+  lat: number,
+  lon: number,
+  farm_id?: string,
   signal?: AbortSignal
 ): Promise<AgronomicRecommendationResponse> {
-  const data = await getJson("recommendation", coordinates, signal);
-  const recommendation = readRecord(data, ["recomendacion_agronomica", "recommendation"]);
-  const source = recommendation || data;
-  const alertText = readString(source, ["alerta_riesgo_climatico", "droughtAlertLevel", "drought_alert_level", "alerta_sequia"])?.toUpperCase();
-  const alert = alertText?.includes("ESTRES") || alertText?.includes("SEQUÍA") ? "Alta" : alertText?.includes("PRECAUCIÓN") || alertText?.includes("VIGILANCIA") ? "Moderada" : alertText?.includes("ÓPTIMO") ? "Baja" : undefined;
+  validateCoordinates({ lat, lon });
+  const bodyPayload: Record<string, unknown> = { lat, lon };
+  if (farm_id) {
+    bodyPayload.farm_id = farm_id;
+  }
+
+  let response = await fetch(`${API_BASE_URL}/api/recommendation`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(bodyPayload),
+    signal,
+    cache: "no-store",
+  });
+
+  if (response.status === 405) {
+    const query = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+    if (farm_id) query.set("farm_id", farm_id);
+    response = await fetch(`${API_BASE_URL}/api/recommendation?${query.toString()}`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal,
+      cache: "no-store",
+    });
+  }
+
+  if (!response.ok) {
+    throw new ApiError(`El backend respondió con HTTP ${response.status}.`, response.status);
+  }
+
+  const payload: unknown = await response.json();
+  if (!isRecord(payload)) {
+    throw new ApiError("La respuesta de /api/recommendation no tiene un formato válido.");
+  }
+
+  const recommendation = readRecord(payload, ["recomendacion_agronomica", "recommendation", "data"]);
+  const source = recommendation || payload;
+  const alertText = readString(source, [
+    "alerta_riesgo_climatico",
+    "droughtAlertLevel",
+    "drought_alert_level",
+    "alerta_sequia",
+    "risk_level",
+  ])?.toUpperCase();
+
+  const alert =
+    alertText?.includes("ALTA") || alertText?.includes("ESTRES") || alertText?.includes("SEQUÍA") || alertText?.includes("SEQUIA")
+      ? "Alta"
+      : alertText?.includes("MODERADA") || alertText?.includes("PRECAUCIÓN") || alertText?.includes("VIGILANCIA")
+      ? "Moderada"
+      : alertText?.includes("BAJA") || alertText?.includes("ÓPTIMO") || alertText?.includes("OPTIMO")
+      ? "Baja"
+      : undefined;
+
   return {
-    recommendationId: readString(data, ["recommendationId", "recommendation_id"]),
-    sowingWindow: readString(source, ["sowingWindow", "sowing_window", "ventana_siembra", "decision_siembra"]),
+    recommendationId: readString(payload, ["recommendationId", "recommendation_id", "id"]),
+    sowingWindow: readString(source, [
+      "sowingWindow",
+      "sowing_window",
+      "ventana_siembra",
+      "decision_siembra",
+      "planting_window",
+    ]),
     droughtAlertLevel: alert === "Baja" || alert === "Moderada" || alert === "Alta" ? alert : undefined,
-    confidence: readNumber(source, ["confidence", "confianza"]),
-    llmSummary: readString(source, ["llmSummary", "llm_summary", "mensaje_productor", "summary", "resumen"]),
-    viability: readString(data, ["viabilidad", "viability"]),
-    assumptions: Array.isArray(source.supuestos) ? source.supuestos.filter((item): item is string => typeof item === "string") : undefined,
+    confidence: readNumber(source, ["confidence", "confianza", "confidence_score"]),
+    llmSummary: readString(source, [
+      "llmSummary",
+      "llm_summary",
+      "recommendation_text",
+      "recommendation",
+      "mensaje_productor",
+      "summary",
+      "resumen",
+      "respuesta",
+    ]),
+    viability: readString(payload, ["viabilidad", "viability"]),
+    assumptions: Array.isArray(source.supuestos)
+      ? source.supuestos.filter((item): item is string => typeof item === "string")
+      : undefined,
     dataVintage: readString(source, ["data_vintage", "dataVintage"]),
-    uncertainty: readString(source, ["incertidumbre", "uncertainty"]),
+    uncertainty: readString(source, ["incertidumbre", "uncertainty", "uncertainty_level", "margen_incertidumbre"]),
     degradation: readString(source, ["degradacion", "degradation"]),
   };
 }
 
+// Obtiene la proyeccion climatica de corto plazo desde el backend FastAPI.
 export async function fetchForecast(coordinates: Coordinates, signal?: AbortSignal): Promise<ForecastResponse> {
   const data = await getJson("forecast", coordinates, signal);
   const values = Array.isArray(data.forecast) ? data.forecast : Array.isArray(data.values) ? data.values : [];
