@@ -6,6 +6,17 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Compass, Globe2, Layers, MapPin, Navigation } from "lucide-react";
 import type { ClimateTelemetry } from "@/services/api";
 
+const WORKER_CDN_URL = "https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl-csp-worker.js";
+const maplibreConfig = (
+  "default" in maplibregl && maplibregl.default ? maplibregl.default : maplibregl
+) as { workerUrl?: string; setWorkerUrl?: (url: string) => void };
+if (typeof maplibreConfig.setWorkerUrl === "function") {
+  maplibreConfig.setWorkerUrl(WORKER_CDN_URL);
+}
+try {
+  maplibreConfig.workerUrl = WORKER_CDN_URL;
+} catch {}
+
 export interface MapboxViewerProps {
   parcelId?: string;
   parcelName?: string;
