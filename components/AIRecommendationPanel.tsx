@@ -12,7 +12,6 @@ export interface AIRecommendationProps {
   loading?: boolean;
 }
 
-// Renderiza el panel de recomendacion RAG mostrando el texto real del LLM y la incertidumbre calculada.
 export default function AIRecommendationPanel({
   parcelId,
   parcelName,
@@ -45,7 +44,7 @@ export default function AIRecommendationPanel({
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#cbd9ce] pb-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-[#176b4d]">
-            Recomendación Agronómica RAG
+            Recomendación Agronómica
           </p>
           <h2 className="mt-1 text-xl font-extrabold">
             {parcelName} <span className="font-normal text-[#647269]">/{parcelId}</span>
@@ -70,17 +69,17 @@ export default function AIRecommendationPanel({
             {loading ? "Cargando..." : sowingWindow || "Sin datos"}
           </p>
           <p className="mt-2 text-xs text-[#647269]">
-            Estimación obtenida en tiempo real desde FastAPI (/api/recommendation).
+            Estimación calculada con telemetría climática de la parcela.
           </p>
         </div>
 
         <div className="rounded-lg bg-white p-4">
           <p className="text-xs font-bold uppercase tracking-wider text-[#647269]">
-            Lectura del modelo RAG
+            Diagnóstico agronómico
           </p>
           <p className="mt-2 text-sm leading-relaxed text-[#17231c]">
             {loading
-              ? "Consultando recomendación en el servidor RAG..."
+              ? "Consultando recomendación..."
               : llmSummary || "El backend no devolvió una síntesis."}
           </p>
         </div>

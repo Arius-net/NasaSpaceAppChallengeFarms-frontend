@@ -15,12 +15,16 @@ export interface AgronomicRecommendationResponse {
   sowingWindow?: string;
   droughtAlertLevel?: "Baja" | "Moderada" | "Alta";
   confidence?: number;
+  confidenceLabel?: string;
+  semaforoColor?: string;
+  locationLabel?: string;
   llmSummary?: string;
   viability?: string;
   assumptions?: string[];
   dataVintage?: string;
   uncertainty?: string;
   degradation?: string;
+  telemetry?: ClimateTelemetry;
 }
 
 export interface ForecastResponse {
@@ -102,10 +106,9 @@ async function getJson(path: string, coordinates: Coordinates, signal?: AbortSig
   return payload;
 }
 
-// Consulta el resumen meteorologico de la parcela desde el backend FastAPI.
 export async function fetchWeather(coordinates: Coordinates, signal?: AbortSignal): Promise<ClimateTelemetry> {
   const data = await getJson("weather", coordinates, signal);
-  const summary = readRecord(data, ["resumen_meteorologico", "summary"]);
+  const summary = readRecord(data, ["resumen_meteorologico", "resumen", "summary"]);
   const soil = summary ? readRecord(summary, ["humedad_suelo_estimada", "soil_moisture"]) : undefined;
   return {
     powerTempC: readNumber(summary || data, ["powerTempC", "temperature", "temperatura_media_c", "temperature_c", "temp_c"]),
@@ -115,7 +118,6 @@ export async function fetchWeather(coordinates: Coordinates, signal?: AbortSigna
   };
 }
 
-// Solicita via POST /api/recommendation el diagnostico RAG de IA y su incertidumbre asociada.
 export async function fetchRecommendation(
   lat: number,
   lon: number,
@@ -161,6 +163,11 @@ export async function fetchRecommendation(
 
   const recommendation = readRecord(payload, ["recomendacion_agronomica", "recommendation", "data"]);
   const source = recommendation || payload;
+  const coordsRecord = readRecord(payload, ["coordenadas"]);
+  const weatherRecord = readRecord(payload, ["datos_meteorologicos"]);
+  const weatherSummary = weatherRecord ? readRecord(weatherRecord, ["resumen", "resumen_meteorologico"]) : undefined;
+  const soilRecord = weatherSummary ? readRecord(weatherSummary, ["humedad_suelo_estimada"]) : undefined;
+
   const alertText = readString(source, [
     "alerta_riesgo_climatico",
     "droughtAlertLevel",
@@ -169,14 +176,24 @@ export async function fetchRecommendation(
     "risk_level",
   ])?.toUpperCase();
 
+  const semaforo = readString(source, ["semaforo_color"]);
   const alert =
-    alertText?.includes("ALTA") || alertText?.includes("ESTRES") || alertText?.includes("SEQUÍA") || alertText?.includes("SEQUIA")
+    semaforo === "alert" || alertText?.includes("ALTA") || alertText?.includes("ESTRES") || alertText?.includes("SEQUÍA") || alertText?.includes("SEQUIA")
       ? "Alta"
-      : alertText?.includes("MODERADA") || alertText?.includes("PRECAUCIÓN") || alertText?.includes("VIGILANCIA")
+      : semaforo === "warn" || alertText?.includes("MODERADA") || alertText?.includes("PRECAUCIÓN") || alertText?.includes("VIGILANCIA")
       ? "Moderada"
-      : alertText?.includes("BAJA") || alertText?.includes("ÓPTIMO") || alertText?.includes("OPTIMO")
+      : semaforo === "signal" || alertText?.includes("BAJA") || alertText?.includes("ÓPTIMO") || alertText?.includes("OPTIMO")
       ? "Baja"
       : undefined;
+
+  const uncertaintyObj = isRecord(source.incertidumbre) ? source.incertidumbre : undefined;
+  const uncertaintyStr =
+    readString(source, ["incertidumbre", "uncertainty", "uncertainty_level", "margen_incertidumbre"]) ||
+    (uncertaintyObj ? readString(uncertaintyObj, ["banda", "nivel", "descripcion"]) : undefined) ||
+    readString(source, ["nivel_confianza"]);
+
+  const confidenceNum = readNumber(source, ["confidence", "confianza", "confidence_score"]);
+  const confidenceLabel = readString(source, ["nivel_confianza"]);
 
   return {
     recommendationId: readString(payload, ["recommendationId", "recommendation_id", "id"]),
@@ -188,13 +205,17 @@ export async function fetchRecommendation(
       "planting_window",
     ]),
     droughtAlertLevel: alert === "Baja" || alert === "Moderada" || alert === "Alta" ? alert : undefined,
-    confidence: readNumber(source, ["confidence", "confianza", "confidence_score"]),
+    confidence: confidenceNum,
+    confidenceLabel,
+    semaforoColor: semaforo,
+    locationLabel: coordsRecord ? readString(coordsRecord, ["nombre_ubicacion", "municipio"]) : undefined,
     llmSummary: readString(source, [
       "llmSummary",
       "llm_summary",
+      "mensaje_productor",
+      "diagnostico_climatico",
       "recommendation_text",
       "recommendation",
-      "mensaje_productor",
       "summary",
       "resumen",
       "respuesta",
@@ -204,12 +225,18 @@ export async function fetchRecommendation(
       ? source.supuestos.filter((item): item is string => typeof item === "string")
       : undefined,
     dataVintage: readString(source, ["data_vintage", "dataVintage"]),
-    uncertainty: readString(source, ["incertidumbre", "uncertainty", "uncertainty_level", "margen_incertidumbre"]),
+    uncertainty: uncertaintyStr,
     degradation: readString(source, ["degradacion", "degradation"]),
+    telemetry: weatherSummary
+      ? {
+          powerTempC: readNumber(weatherSummary, ["temperatura_media_c", "powerTempC"]),
+          smapSoilMoisture: readNumber(soilRecord || weatherSummary, ["sm_radicular_v_v", "smapSoilMoisture"]),
+          imergPrecipMm: readNumber(weatherSummary, ["precipitacion_acumulada_7d_mm", "imergPrecipMm"]),
+        }
+      : undefined,
   };
 }
 
-// Obtiene la proyeccion climatica de corto plazo desde el backend FastAPI.
 export async function fetchForecast(coordinates: Coordinates, signal?: AbortSignal): Promise<ForecastResponse> {
   const data = await getJson("forecast", coordinates, signal);
   const values = Array.isArray(data.forecast) ? data.forecast : Array.isArray(data.values) ? data.values : [];
