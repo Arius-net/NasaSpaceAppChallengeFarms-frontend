@@ -90,23 +90,6 @@ export default function AIRecommendationPanel({
           Datos degradados: {degradation}
         </p>
       )}
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="rounded-lg bg-[#176b4d] px-4 py-2 text-xs font-bold text-white hover:bg-[#0e4935]"
-        >
-          Imprimir
-        </button>
-        <button
-          type="button"
-          onClick={() => alert("Reporte preparado para exportar.")}
-          className="rounded-lg border border-[#9fbaa6] bg-white px-4 py-2 text-xs font-bold text-[#176b4d] hover:border-[#176b4d]"
-        >
-          Exportar
-        </button>
-      </div>
     </section>
   );
 }

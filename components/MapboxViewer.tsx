@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Compass, Layers, MapPin } from "lucide-react";
+import { Compass, MapPin } from "lucide-react";
 import type { ClimateTelemetry } from "@/services/api";
 
 const WORKER_CDN_URL = 'https://cdn.jsdelivr.net/npm/maplibre-gl@latest/dist/maplibre-gl-csp-worker.js';
@@ -48,7 +48,6 @@ export default function MapboxViewer({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const callbackRef = useRef(onSelectCoordinate);
-  const [mapStyleMode, setMapStyleMode] = useState<"satellite" | "topo">("satellite");
 
   useEffect(() => {
     callbackRef.current = onSelectCoordinate;
@@ -77,22 +76,8 @@ export default function MapboxViewer({
             tileSize: 256,
             attribution: "© Esri World Imagery • NASA POWER Earth Observation",
           },
-          topo: {
-            type: "raster",
-            tiles: [
-              "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-            ],
-            tileSize: 256,
-            attribution: "© OpenStreetMap • CARTO",
-          },
         },
         layers: [
-          {
-            id: "topo-layer",
-            type: "raster",
-            source: "topo",
-            layout: { visibility: "none" },
-          },
           {
             id: "satellite-layer",
             type: "raster",
@@ -162,24 +147,6 @@ export default function MapboxViewer({
     });
   };
 
-  const toggleMapLayer = (mode: "satellite" | "topo") => {
-    setMapStyleMode(mode);
-    const map = mapRef.current;
-    if (!map) return;
-    if (map.getLayer("satellite-layer") && map.getLayer("topo-layer")) {
-      map.setLayoutProperty(
-        "satellite-layer",
-        "visibility",
-        mode === "satellite" ? "visible" : "none"
-      );
-      map.setLayoutProperty(
-        "topo-layer",
-        "visibility",
-        mode === "topo" ? "visible" : "none"
-      );
-    }
-  };
-
   return (
     <section className="rounded-xl border border-[#dce4dc] bg-white shadow-sm overflow-hidden flex flex-col">
       <div className="p-4 border-b border-[#dce4dc] flex flex-wrap items-center justify-between gap-3 bg-white">
@@ -203,32 +170,6 @@ export default function MapboxViewer({
           >
             Centrar punto
           </button>
-
-          <div className="flex items-center gap-1 bg-[#f7f8f3] p-1 rounded-lg border border-[#dce4dc] text-xs font-mono">
-            <button
-              type="button"
-              onClick={() => toggleMapLayer("satellite")}
-              className={`px-2.5 py-1 rounded flex items-center gap-1 transition ${
-                mapStyleMode === "satellite"
-                  ? "bg-[#176b4d] text-white font-bold"
-                  : "text-[#647269] hover:text-[#17231c]"
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              Satélite
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleMapLayer("topo")}
-              className={`px-2.5 py-1 rounded flex items-center gap-1 transition ${
-                mapStyleMode === "topo"
-                  ? "bg-[#176b4d] text-white font-bold"
-                  : "text-[#647269] hover:text-[#17231c]"
-              }`}
-            >
-              Mapa Base
-            </button>
-          </div>
         </div>
       </div>
 
