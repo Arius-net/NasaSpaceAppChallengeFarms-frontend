@@ -1,21 +1,28 @@
 "use client";
 
 import { useState } from "react";
+import type { ClimateTelemetry } from "@/services/api";
 
 export interface MapboxViewerProps {
   parcelId?: string;
   parcelName?: string;
   coordinates?: { lat: number; lng: number };
+  telemetry?: ClimateTelemetry;
 }
 
 export default function MapboxViewer({
   parcelId = "FRA-01",
   parcelName = "El Sabinal",
   coordinates = { lat: 16.2334, lng: -93.2682 },
+  telemetry,
 }: MapboxViewerProps) {
   const [activeLayer, setActiveLayer] = useState<"SMAP" | "IMERG" | "POWER">("SMAP");
   const [zoom, setZoom] = useState(13);
-  const layerText = { SMAP: "Humedad radicular: 0.28 m³/m³", IMERG: "Lluvia 10 días: 42.6 mm", POWER: "Temperatura: 29.4 °C" };
+  const layerText = {
+    SMAP: `Humedad radicular: ${telemetry?.smapSoilMoisture === undefined ? "Sin datos" : `${telemetry.smapSoilMoisture} m³/m³`}`,
+    IMERG: `Lluvia acumulada: ${telemetry?.imergPrecipMm === undefined ? "Sin datos" : `${telemetry.imergPrecipMm} mm`}`,
+    POWER: `Temperatura: ${telemetry?.powerTempC === undefined ? "Sin datos" : `${telemetry.powerTempC} °C`}`,
+  };
 
   return (
     <section className="min-h-[390px] rounded-xl border border-[#dce4dc] bg-white p-5 shadow-sm">

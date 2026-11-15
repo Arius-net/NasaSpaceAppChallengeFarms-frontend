@@ -57,9 +57,9 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-lg bg-[#f7f8f3] p-3"><p className="text-lg font-extrabold">29.4°</p><p className="text-[11px] text-[#647269]">temperatura</p></div>
-                <div className="rounded-lg bg-[#f7f8f3] p-3"><p className="text-lg font-extrabold">0.28</p><p className="text-[11px] text-[#647269]">humedad</p></div>
-                <div className="rounded-lg bg-[#f7f8f3] p-3"><p className="text-lg font-extrabold">42.6</p><p className="text-[11px] text-[#647269]">lluvia mm</p></div>
+                <div className="rounded-lg bg-[#f7f8f3] p-3"><p className="text-lg font-extrabold">NASA</p><p className="text-[11px] text-[#647269]">temperatura</p></div>
+                <div className="rounded-lg bg-[#f7f8f3] p-3"><p className="text-lg font-extrabold">NASA</p><p className="text-[11px] text-[#647269]">humedad</p></div>
+                <div className="rounded-lg bg-[#f7f8f3] p-3"><p className="text-lg font-extrabold">NASA</p><p className="text-[11px] text-[#647269]">lluvia</p></div>
               </div>
             </div>
           </div>
